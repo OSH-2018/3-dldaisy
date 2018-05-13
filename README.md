@@ -2,7 +2,7 @@
 
 ## 实现功能
 
-实现了基本的read,write,truncate,unlink,没有实现mkdir。文件系统的结构同助教的链表。存储结构在下图可见。
+实现了基本的read,write,truncate,unlink,没有实现mkdir。文件系统的结构同助教的链表。存储结构为，用指针数组（事实上每个指针是一个指针结构体）指向内存中的每一块数据。
 ```Bash
 $ cd mountpoint
 $ ls -al
@@ -17,7 +17,8 @@ $ dd if=testfile of=/dev/null
 $ rm testfile
 $ ls -al
 ```
-*注意事项*  blocknr=16 * 1024(16k),
+*注意事项* 
+          blocknr=16 * 1024(16k)
 
           blocksize=128 * 1024(128k),如此安排的原因是：
           

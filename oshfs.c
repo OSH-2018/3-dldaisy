@@ -14,11 +14,9 @@
 typedef int addr;
 struct filenode {
 	char filename[256];
-	//addr content[nptr];
-	addr content;//´æ´¢content Ö¸ÕëµÄµØ·½
+	addr content;//å­˜å‚¨content æŒ‡é’ˆçš„åœ°æ–¹
 	struct stat st;
 	int num_blocks;
-	//int num_content;
 	struct filenode *next;
 };
 
@@ -51,7 +49,7 @@ static void create_filenode(const char *filename, const struct stat *st) {
 	struct head_block* root=(struct head_block*)mem[0];
 	struct filenode *newnode;
 	
-	//·ÖÅä¿Õ¼ä
+	//åˆ†é…ç©ºé—´
 	i = find_vacancy();
 	if(i==0) {
 		perror("space full");
@@ -62,7 +60,7 @@ static void create_filenode(const char *filename, const struct stat *st) {
 	newnode = (struct filenode*)mem[i];
 	root->used[i]=1;
 
-	//³õÊ¼»¯ÄÚÈİ£¬°üÀ¨ÉêÇëÒ»¿éÊı¾İÖ¸Õë¿é
+	//åˆå§‹åŒ–å†…å®¹ï¼ŒåŒ…æ‹¬ç”³è¯·ä¸€å—æ•°æ®æŒ‡é’ˆå—
 	newnode->st.st_ino=i;
 	newnode->st.st_size=0;
 	memcpy(newnode->filename, filename, strlen(filename) + 1);
@@ -79,7 +77,7 @@ static void create_filenode(const char *filename, const struct stat *st) {
 	newnode->content=j;
 	newnode->num_blocks=0;
 	
-	//½ÓÈëÎÄ¼ş¿éÁ´±í
+	//æ¥å…¥æ–‡ä»¶å—é“¾è¡¨
 	newnode->next=root->next;
 	root->next=newnode;
 
@@ -117,12 +115,12 @@ static struct filenode *get_filenode_last(const char *name)
 
 static void *oshfs_init(struct fuse_conn_info *conn)
 {
-	//³õÊ¼»¯³¬¼¶¿éhead_block
+	//åˆå§‹åŒ–è¶…çº§å—head_block
 	mem[0]=mmap(NULL, blocksize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	struct head_block* root;
 	root=(struct head_block*)mem[0];
 	root->next=NULL;
-	//³õÊ¼»¯³¬¼¶¿éÄÚµÄusedÊı×é
+	//åˆå§‹åŒ–è¶…çº§å—å†…çš„usedæ•°ç»„
 	for(int i=0;i<blocknr;i++)
 		root->used[i]=0;
 	root->used[0]=1;
@@ -187,11 +185,11 @@ static int oshfs_write(const char *path, const char *buf, size_t size, off_t off
 	addr* content=(addr*)mem[node->content];
 	if (node == NULL) return 0;
 
-	int bsize = blocksize*node->num_blocks;//bsize:ÏÖÓĞµÄÊı¾İ¿é¿ÉÒÔÈİÄÉµÄÊı¾İÁ¿
+	int bsize = blocksize*node->num_blocks;//bsize:ç°æœ‰çš„æ•°æ®å—å¯ä»¥å®¹çº³çš„æ•°æ®é‡
 	if (offset + size > bsize) {
-		//Ìí¼ÓÊı¾İ¿é
+		//æ·»åŠ æ•°æ®å—
 		int add_size = offset + size - bsize;
-		int nb = (add_size - 1) / blocksize + 1;//ĞèÒªÌí¼ÓµÄÊıÁ¿
+		int nb = (add_size - 1) / blocksize + 1;//éœ€è¦æ·»åŠ çš„æ•°é‡
 		for(int i=node->num_blocks;i<node->num_blocks+nb;i++){
 			int j;
 			j=find_vacancy();
@@ -206,34 +204,34 @@ static int oshfs_write(const char *path, const char *buf, size_t size, off_t off
 		node->num_blocks+=nb;
 	}
 	
-	//Ìí¼ÓÍê±Ï£¬¿ªÊ¼Ğ´Èë
+	//æ·»åŠ å®Œæ¯•ï¼Œå¼€å§‹å†™å…¥
 	if(offset+size>node->st.st_size)
 		node->st.st_size=offset+size;
 		
 	int offset_int=offset;
-	int addr1=offset_int/blocksize;//µÚaddr1¸öÊı¾İ¿é
-	int addr2=offset_int%blocksize;//×îºóÒ»¸öÊı¾İ¿éÖĞ£¬µÚaddr2¸ö×Ö½Ú
-	int remain=blocksize-addr2;//×îºóÒ»¸öÊı¾İ¿é»¹¿ÉÒÔÈİÄÉremain¸ö×Ö½Ú
+	int addr1=offset_int/blocksize;//ç¬¬addr1ä¸ªæ•°æ®å—
+	int addr2=offset_int%blocksize;//æœ€åä¸€ä¸ªæ•°æ®å—ä¸­ï¼Œç¬¬addr2ä¸ªå­—èŠ‚
+	int remain=blocksize-addr2;//æœ€åä¸€ä¸ªæ•°æ®å—è¿˜å¯ä»¥å®¹çº³remainä¸ªå­—èŠ‚
 	
 	char *cur_buf=buf;
 	int cur_size=size;
-	if(size<=remain){//²»ĞèÒªĞÂµÄÊı¾İ¿é£¬Ö»ĞèÌîÈëÔ­À´×îºóÒ»¸öÊı¾İ¿éµÄÊ£Óà²¿·Ö
+	if(size<=remain){//ä¸éœ€è¦æ–°çš„æ•°æ®å—ï¼Œåªéœ€å¡«å…¥åŸæ¥æœ€åä¸€ä¸ªæ•°æ®å—çš„å‰©ä½™éƒ¨åˆ†
 		memcpy(mem[content[addr1]]+addr2,cur_buf,size);
 		return size;
 	}
-	else{//ĞèÒªĞÂµÄÊı¾İ¿é£¬Ç°ÃæÒÑ¾­·ÖÅäºÃÁË
-		memcpy(mem[content[addr1]]+addr2,cur_buf,remain);//ÏÈÌîÂúÔ­À´µÄÊı¾İ¿é
+	else{//éœ€è¦æ–°çš„æ•°æ®å—ï¼Œå‰é¢å·²ç»åˆ†é…å¥½äº†
+		memcpy(mem[content[addr1]]+addr2,cur_buf,remain);//å…ˆå¡«æ»¡åŸæ¥çš„æ•°æ®å—
 		cur_buf+=remain;
 		cur_size-=remain;
 		addr1+=1;
 		while(cur_size>0){
-			if(cur_size>=blocksize){//Ê£Óà¶àÓÚÒ»¿é
+			if(cur_size>=blocksize){//å‰©ä½™å¤šäºä¸€å—
 				memcpy(mem[content[addr1]],cur_buf,blocksize);
 				cur_buf+=blocksize;
 				cur_size-=blocksize;
-				addr1+=1;//½øÈëÏÂ¸öÊı¾İ¿é
+				addr1+=1;//è¿›å…¥ä¸‹ä¸ªæ•°æ®å—
 			}
-			else{//Ê£Óà²»×ãÒ»¿é
+			else{//å‰©ä½™ä¸è¶³ä¸€å—
 				memcpy(mem[content[addr1]],cur_buf,cur_size);
 				break;
 			}
@@ -269,7 +267,7 @@ static int oshfs_truncate(const char *path, off_t size)
 
 static int oshfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-	//¼¸ºõÍ¬writeµÄĞ´Èë²¿·Ö
+	//å‡ ä¹åŒwriteçš„å†™å…¥éƒ¨åˆ†
 	struct head_block* root=(struct head_block*)mem[0];
 	struct filenode *node = get_filenode(path);
 	if (node == NULL) return 0;
@@ -325,16 +323,16 @@ static int oshfs_unlink(const char *path)
 	struct filenode *node_last = get_filenode_last(path);
 	int p_volumn = blocksize / sizeof(int);
 	addr* content=(addr*)mem[node->content];
-	//ÊÍ·ÅÊı¾İ¿é
+	//é‡Šæ”¾æ•°æ®å—
 	for(int i=0;i<node->num_blocks;i++){
 		munmap(mem[content[i]],blocksize);
 		root->used[content[i]]=0;
 	}
-	//ÊÍ·ÅÊı¾İÖ¸Õë¿é
+	//é‡Šæ”¾æ•°æ®æŒ‡é’ˆå—
 	munmap(mem[node->content],blocksize);
 	root->used[node->content]=0;
 	
-	//ÊÍ·ÅÎÄ¼ş¿é
+	//é‡Šæ”¾æ–‡ä»¶å—
 	if(node_last==NULL){
 		root->next=node->next;
 		root->used[node->st.st_ino]=0;
